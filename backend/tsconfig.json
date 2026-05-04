@@ -8,6 +8,7 @@
     "allowSyntheticDefaultImports": true,
     "lib": ["es2021"],
     "skipLibCheck": true,
+    "ignoreDeprecations": "6.0",
     "forceConsistentCasingInFileNames": true,
     "strict": false,
     "noImplicitAny": false,

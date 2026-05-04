@@ -1,0 +1,7 @@
+[build]
+  publish = "frontend"
+  functions = "netlify/functions"
+
+[context.production.environment]
+  # If you add build-time env vars, put them here
+  # EXAMPLE_API_URL = "https://api.example.com"

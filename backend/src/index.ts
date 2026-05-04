@@ -9,6 +9,9 @@ import nodemailer from 'nodemailer';
 
 dotenv.config();
 
+// Extended request type for authenticated routes
+type AuthRequest = Request & { user?: any };
+
 const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
@@ -46,7 +49,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../../frontend')));
 
 // Handle SPA routing - send index.html for any unknown routes
-app.get(/^(?!\/api).*$/, (req: any, res: any) => {
+app.get(/^(?!\/api).*$/, (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, '../../frontend/index.html'));
 });
 
@@ -234,7 +237,7 @@ const verifyRecaptcha = async (token: string) => {
 };
 
 // Middleware for Auth
-const authenticateToken = (req: any, res: Response, next: NextFunction) => {
+const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -347,7 +350,7 @@ app.post('/api/contact', async (req: Request, res: Response) => {
 });
 
 // Verify Password (for secure actions)
-app.post('/api/verify-password', authenticateToken, async (req: any, res: Response) => {
+app.post('/api/verify-password', authenticateToken, async (req: AuthRequest, res: Response) => {
   const { password } = req.body;
   const user = users.find(u => u.id === req.user.id);
   if (!user) return res.status(404).json({ message: 'User not found' });
@@ -361,13 +364,13 @@ app.post('/api/verify-password', authenticateToken, async (req: any, res: Respon
 });
 
 // Get Messages for Current User
-app.get('/api/user/messages', authenticateToken, (req: any, res: Response) => {
+app.get('/api/user/messages', authenticateToken, (req: AuthRequest, res: Response) => {
   const userMessages = contactMessages.filter(m => m.userId === req.user.id);
   res.json(userMessages);
 });
 
 // Reply to a message (Authenticated - User or Admin)
-app.post('/api/messages/:id/reply', authenticateToken, (req: any, res: Response) => {
+app.post('/api/messages/:id/reply', authenticateToken, (req: AuthRequest, res: Response) => {
   const { message } = req.body;
   const msgId = req.params.id;
   const user = users.find(u => u.id === req.user.id);
@@ -484,7 +487,7 @@ app.post('/api/login', async (req: Request, res: Response) => {
 // --- BANKING ROUTES ---
 
 // Get Profile & Balance
-app.get('/api/profile', authenticateToken, (req: any, res: Response) => {
+app.get('/api/profile', authenticateToken, (req: AuthRequest, res: Response) => {
   const user = users.find(u => u.id === req.user.id);
   if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -493,7 +496,7 @@ app.get('/api/profile', authenticateToken, (req: any, res: Response) => {
 });
 
 // Update Profile
-app.put('/api/profile', authenticateToken, (req: any, res: Response) => {
+app.put('/api/profile', authenticateToken, (req: AuthRequest, res: Response) => {
   const user = users.find(u => u.id === req.user.id);
   if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -517,7 +520,7 @@ app.put('/api/profile', authenticateToken, (req: any, res: Response) => {
 });
 
 // Deposit
-app.post('/api/deposit', authenticateToken, async (req: any, res: Response) => {
+app.post('/api/deposit', authenticateToken, async (req: AuthRequest, res: Response) => {
   const { amount, password } = req.body;
   const user = users.find(u => u.id === req.user.id);
   if (!user) return res.status(404).json({ message: 'User not found' });
@@ -543,7 +546,7 @@ app.post('/api/deposit', authenticateToken, async (req: any, res: Response) => {
 });
 
 // Withdraw
-app.post('/api/withdraw', authenticateToken, async (req: any, res: Response) => {
+app.post('/api/withdraw', authenticateToken, async (req: AuthRequest, res: Response) => {
   const { amount, method, account, password } = req.body;
   const user = users.find(u => u.id === req.user.id);
   if (!user) return res.status(404).json({ message: 'User not found' });
@@ -570,7 +573,7 @@ app.post('/api/withdraw', authenticateToken, async (req: any, res: Response) => 
 });
 
 // Transfer
-app.post('/api/transfer', authenticateToken, async (req: any, res: Response) => {
+app.post('/api/transfer', authenticateToken, async (req: AuthRequest, res: Response) => {
   const { toEmail, amount, password } = req.body;
   console.log(`Transfer attempt from ${req.user.email} to ${toEmail} for amount ${amount}`);
   
@@ -648,7 +651,7 @@ app.post('/api/transfer', authenticateToken, async (req: any, res: Response) => 
 });
 
 // Pay Bills
-app.post('/api/pay-bill', authenticateToken, async (req: any, res: Response) => {
+app.post('/api/pay-bill', authenticateToken, async (req: AuthRequest, res: Response) => {
   const { biller, amount, password } = req.body;
   const user = users.find(u => u.id === req.user.id);
   if (!user) return res.status(404).json({ message: 'User not found' });
@@ -677,7 +680,7 @@ app.post('/api/pay-bill', authenticateToken, async (req: any, res: Response) => 
 // --- ADMIN ROUTES ---
 
 // Submit Card Request
-app.post('/api/card-request', authenticateToken, (req: any, res: Response) => {
+app.post('/api/card-request', authenticateToken, (req: AuthRequest, res: Response) => {
   const user = users.find(u => u.id === req.user.id);
   if (!user) return res.status(404).json({ message: 'User not found' });
 
@@ -705,7 +708,7 @@ app.post('/api/card-request', authenticateToken, (req: any, res: Response) => {
 });
 
 // Get All Card Requests (Admin only)
-app.get('/api/admin/card-requests', authenticateToken, (req: any, res: Response) => {
+app.get('/api/admin/card-requests', authenticateToken, (req: AuthRequest, res: Response) => {
   if (req.user.email !== 'admin@neobank.com') {
     return res.status(403).json({ message: 'Access denied. Admin only.' });
   }
@@ -713,7 +716,7 @@ app.get('/api/admin/card-requests', authenticateToken, (req: any, res: Response)
 });
 
 // Approve Card Request (Admin only)
-app.post('/api/admin/approve-card', authenticateToken, (req: any, res: Response) => {
+app.post('/api/admin/approve-card', authenticateToken, (req: AuthRequest, res: Response) => {
   if (req.user.email !== 'admin@neobank.com') {
     return res.status(403).json({ message: 'Access denied. Admin only.' });
   }
@@ -738,7 +741,7 @@ app.post('/api/admin/approve-card', authenticateToken, (req: any, res: Response)
 });
 
 // Reject Card Request (Admin only)
-app.post('/api/admin/reject-card', authenticateToken, (req: any, res: Response) => {
+app.post('/api/admin/reject-card', authenticateToken, (req: AuthRequest, res: Response) => {
   if (req.user.email !== 'admin@neobank.com') {
     return res.status(403).json({ message: 'Access denied. Admin only.' });
   }
@@ -753,7 +756,7 @@ app.post('/api/admin/reject-card', authenticateToken, (req: any, res: Response) 
 });
 
 // Get All Users (Admin only)
-app.get('/api/admin/users', authenticateToken, (req: any, res: Response) => {
+app.get('/api/admin/users', authenticateToken, (req: AuthRequest, res: Response) => {
   // Simple check for admin email
   if (req.user.email !== 'admin@neobank.com') {
     return res.status(403).json({ message: 'Access denied. Admin only.' });
@@ -773,7 +776,7 @@ app.get('/api/admin/users', authenticateToken, (req: any, res: Response) => {
 });
 
 // Delete User (Admin only)
-app.delete('/api/admin/users/:id', authenticateToken, (req: any, res: Response) => {
+app.delete('/api/admin/users/:id', authenticateToken, (req: AuthRequest, res: Response) => {
   if (req.user.email !== 'admin@neobank.com') {
     return res.status(403).json({ message: 'Access denied. Admin only.' });
   }
@@ -796,7 +799,7 @@ app.delete('/api/admin/users/:id', authenticateToken, (req: any, res: Response) 
 });
 
 // Get Admin Messages
-app.get('/api/admin/messages', authenticateToken, (req: any, res: Response) => {
+app.get('/api/admin/messages', authenticateToken, (req: AuthRequest, res: Response) => {
   if (req.user.email !== 'admin@neobank.com') {
     return res.status(403).json({ message: 'Access denied. Admin only.' });
   }
@@ -805,7 +808,7 @@ app.get('/api/admin/messages', authenticateToken, (req: any, res: Response) => {
 });
 
 // Mark Message as Read
-app.put('/api/admin/messages/:id/read', authenticateToken, (req: any, res: Response) => {
+app.put('/api/admin/messages/:id/read', authenticateToken, (req: AuthRequest, res: Response) => {
   if (req.user.email !== 'admin@neobank.com') {
     return res.status(403).json({ message: 'Access denied. Admin only.' });
   }
@@ -823,7 +826,7 @@ app.put('/api/admin/messages/:id/read', authenticateToken, (req: any, res: Respo
 });
 
 // Get All System Transactions (Admin only)
-app.get('/api/admin/transactions', authenticateToken, (req: any, res: Response) => {
+app.get('/api/admin/transactions', authenticateToken, (req: AuthRequest, res: Response) => {
   if (req.user.email !== 'admin@neobank.com') {
     return res.status(403).json({ message: 'Access denied. Admin only.' });
   }
