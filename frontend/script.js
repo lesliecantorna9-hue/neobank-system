@@ -1,6 +1,6 @@
 // Configuration: Set API_URL based on where the frontend is hosted.
 // When deployed on Netlify, use Render backend (replace with your actual Render URL)
-const RENDER_BACKEND_URL = 'https://your-render-service.onrender.com/api'; // Replace this!
+const RENDER_BACKEND_URL = 'https://neobank-backend-20c5.onrender.com/api';
 const API_URL = (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
     ? 'http://localhost:5000/api'
     : RENDER_BACKEND_URL;
