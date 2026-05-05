@@ -20,11 +20,19 @@ const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET || '6Ld8_dYsAAAAAOjQY7pocY
 
 // Email Transporter Configuration
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false,
+  requireTLS: true,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
-  }
+  },
+  tls: {
+    ciphers: 'SSLv3'
+  },
+  // Force IPv4 to avoid connectivity issues
+  family: 4
 });
 
 const sendEmail = async (to: string, subject: string, text: string, html?: string) => {
