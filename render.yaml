@@ -1,0 +1,30 @@
+# Render manifest to create the backend web service automatically.
+# Replace `your-github-username` and branch as needed before importing into Render.
+services:
+  - type: web
+    name: neo-bank-backend
+    env: node
+    region: oregon
+    plan: starter
+    repo: samengcabugao-byte/neo-bank-system
+    branch: main
+    rootDir: backend
+    buildCommand: "npm ci && npm run build"
+    startCommand: "npm start"
+    autoDeploy: true
+    # Environment variables: fill values in Render UI or via the Render Dashboard after import
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "5000"
+      - key: JWT_SECRET
+        value: ""
+      - key: RECAPTCHA_SECRET
+        value: ""
+      - key: EMAIL_USER
+        value: ""
+      - key: EMAIL_PASS
+        value: ""
+      - key: EMAIL_FROM
+        value: ""
