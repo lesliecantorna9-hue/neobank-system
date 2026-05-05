@@ -16,7 +16,7 @@ const app = express();
 const PORT = Number(process.env.PORT) || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
 // PAALALA: Palitan ang 'SECRET_KEY_DITO' ng iyong REAL SECRET KEY mula sa Google
-const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET || '6Ld8_dYsAAAAAOjQY7pocYTiMBYt2BUSX_u4kb2h';
+const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET || '6LeR9ksAAAAAHcNrpFSSAO6W-cl3PUJ8gk55Ph';
 
 // Email Transporter Configuration
 const transporter = nodemailer.createTransport({
@@ -24,27 +24,55 @@ const transporter = nodemailer.createTransport({
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
-  }
+  },
+  debug: true, // Enable debug logging
+  logger: true // Log to console
 });
 
 const sendEmail = async (to: string, subject: string, text: string, html?: string) => {
   try {
-    await transporter.sendMail({
+    console.log('📧 Attempting to send email...');
+    console.log('📧 EMAIL_USER:', process.env.EMAIL_USER ? 'SET' : 'NOT SET');
+    console.log('📧 EMAIL_PASS:', process.env.EMAIL_PASS ? 'SET (length: ' + process.env.EMAIL_PASS.length + ')' : 'NOT SET');
+    console.log('📧 EMAIL_FROM:', process.env.EMAIL_FROM || 'NOT SET');
+    console.log('📧 To:', to);
+
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.log('⚠️ Email credentials not set, skipping email send');
+      return false;
+    }
+
+    const mailOptions = {
       from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
       to,
       subject,
       text,
       html
-    });
-    console.log(`Email sent to: ${to}`);
+    };
+
+    console.log('📧 Mail options:', JSON.stringify(mailOptions, null, 2));
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Email sent successfully!');
+    console.log('✅ Message ID:', info.messageId);
+    console.log('✅ Response:', info.response);
     return true;
   } catch (error) {
-    console.error(`Failed to send email to ${to}:`, error);
+    console.error('❌ FAILED TO SEND EMAIL - FULL ERROR:');
+    console.error(error);
+    if (error instanceof Error) {
+      console.error('❌ Error name:', error.name);
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Error stack:', error.stack);
+    }
     return false;
   }
 };
 
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:5000', 'http://127.0.0.1:3000', 'http://127.0.0.1:5000', 'https://neobank-system.netlify.app', 'https://neobank-backend-20c5.onrender.com'],
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../../frontend')));
 
@@ -295,55 +323,6 @@ const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) 
 
 // --- AUTH ROUTES ---
 
-// Send OTP
-app.post('/api/send-otp', async (req: Request, res: Response) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ message: 'Email is required' });
-
-  // Generate 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes expiry
-
-  // Remove existing OTP for this email
-  pendingOTPs = pendingOTPs.filter(p => p.email !== email);
-  
-  // Store new OTP
-  pendingOTPs.push({ email, otp, expiresAt });
-
-  // Always log OTP clearly
-  console.log('========================================');
-  console.log(`✅ OTP GENERATED for ${email}`);
-  console.log(`✅ OTP CODE: ${otp}`);
-  console.log('========================================');
-
-  // Try to send email (optional)
-  try {
-    const subject = 'Your Verification Code - NEO BANK';
-    const text = `Your verification code is: ${otp}. This code will expire in 5 minutes.`;
-    const html = `
-      <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #00df81; border-radius: 10px; background-color: #010202; color: #e2e8f0;">
-        <h2 style="color: #00df81;">NEO BANK</h2>
-        <p>Hello,</p>
-        <p>Your verification code is:</p>
-        <h1 style="color: #00df81; font-size: 32px; letter-spacing: 5px;">${otp}</h1>
-        <p>This code will expire in <b>5 minutes</b>. Please do not share this code with anyone.</p>
-        <hr style="border: 0; border-top: 1px solid rgba(0,223,129,0.2);">
-        <p style="font-size: 12px; color: #94a3b8;">This is an automated message. Please do not reply.</p>
-      </div>
-    `;
-    await sendEmail(email, subject, text, html);
-    console.log(`✅ Email sent to: ${email}`);
-  } catch (emailError) {
-    console.log(`⚠️ Email not sent (this is okay!), using OTP from logs`);
-  }
-
-  // ALWAYS return OTP in response for easy testing
-  res.json({ 
-    message: 'OTP sent successfully! Check your email OR Render logs for the code.', 
-    otp: otp
-  });
-});
-
 // Submit Contact Message
 app.post('/api/contact', async (req: Request, res: Response) => {
   const { name, email, message, userId } = req.body;
@@ -441,33 +420,8 @@ app.post('/api/messages/:id/reply', authenticateToken, (req: AuthRequest, res: R
 
 // Register
 app.post('/api/register', async (req: Request, res: Response) => {
-  const { name, email, password, phoneNumber, otp, captchaToken } = req.body;
+  const { name, email, password, phoneNumber } = req.body;
   console.log(`Register attempt for: ${email}`);
-
-  if (!captchaToken) {
-    return res.status(400).json({ message: 'reCAPTCHA token is required' });
-  }
-
-  const isCaptchaValid = await verifyRecaptcha(captchaToken);
-  if (!isCaptchaValid) {
-    return res.status(400).json({ message: 'Invalid reCAPTCHA' });
-  }
-
-  // Validate OTP
-  const pendingOTP = pendingOTPs.find(p => p.email === email);
-  if (!pendingOTP) {
-    return res.status(400).json({ message: 'Please request an OTP first' });
-  }
-  if (pendingOTP.otp !== otp) {
-    return res.status(400).json({ message: 'Invalid OTP code' });
-  }
-  if (Date.now() > pendingOTP.expiresAt) {
-    pendingOTPs = pendingOTPs.filter(p => p.email !== email);
-    return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
-  }
-
-  // Remove OTP after successful verification
-  pendingOTPs = pendingOTPs.filter(p => p.email !== email);
 
   if (phoneNumber) {
     if (!/^\d+$/.test(phoneNumber)) {
@@ -604,7 +558,7 @@ app.post('/api/withdraw', authenticateToken, async (req: AuthRequest, res: Respo
     type: 'Withdraw',
     amount: numAmount,
     date: new Date().toISOString(),
-    description: `Withdrawal via ${method} (${account})`
+    description: method && account ? `Withdrawal via ${method} (${account})` : 'Cash Withdrawal'
   });
 
   saveData();

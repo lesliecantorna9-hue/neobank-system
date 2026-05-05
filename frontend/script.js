@@ -204,16 +204,9 @@ if (registerForm) {
         const fname = document.getElementById('register-fname').value;
         const lname = document.getElementById('register-lname').value;
         const email = document.getElementById('register-email').value;
-        const otp = document.getElementById('register-otp').value;
         const phone = document.getElementById('register-phone').value;
         const password = document.getElementById('register-password').value;
         const confirmPassword = document.getElementById('register-confirm-password').value;
-        const captchaResponse = 'dev-bypass-token'; // Always bypass for now
-
-        if (!otp || otp.length !== 6) {
-            await showSystemAlert('Please enter the 6-digit OTP code sent to your email.', 'OTP Required', '🔑');
-            return;
-        }
 
         if (password !== confirmPassword) {
             await showSystemAlert('Passwords do not match!', 'Validation Error', '❌');
@@ -225,7 +218,7 @@ if (registerForm) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
-                    name: `${fname} ${lname}`, email, password, phoneNumber: phone, otp, captchaToken: captchaResponse
+                    name: `${fname} ${lname}`, email, password, phoneNumber: phone
                 })
             });
             const data = await res.json();
@@ -233,65 +226,11 @@ if (registerForm) {
                 await showSystemAlert('Registration successful! Please login.', 'Success', '✅');
                 showLandingView('login');
                 e.target.reset();
-                if (typeof grecaptcha !== 'undefined' && typeof grecaptcha.reset === 'function') grecaptcha.reset();
             } else {
                 await showSystemAlert(data.message, 'Registration Failed', '❌');
-                if (typeof grecaptcha !== 'undefined' && typeof grecaptcha.reset === 'function') grecaptcha.reset();
             }
         } catch (err) {
             await showSystemAlert('Error connecting to server.', 'Connection Error', '🌐');
-            if (typeof grecaptcha !== 'undefined' && typeof grecaptcha.reset === 'function') grecaptcha.reset();
-        }
-    };
-}
-
-const sendOtpBtn = document.getElementById('send-otp-btn');
-if (sendOtpBtn) {
-    sendOtpBtn.onclick = async () => {
-        const email = document.getElementById('register-email').value;
-        if (!email || !email.includes('@')) {
-            await showSystemAlert('Please enter a valid email address first.', 'Validation Error', '📧');
-            return;
-        }
-
-        try {
-            sendOtpBtn.disabled = true;
-            sendOtpBtn.textContent = 'Sending...';
-            const res = await fetch(`${API_URL}/send-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email })
-            });
-            if (res.ok) {
-                const data = await res.json();
-                showNotification('OTP sent! Check your email OR the code is already filled!', 'success');
-                // Auto-fill OTP if we received it
-                if (data.otp) {
-                    const otpInput = document.getElementById('register-otp');
-                    if (otpInput) {
-                        otpInput.value = data.otp;
-                    }
-                }
-                let timer = 60;
-                const interval = setInterval(() => {
-                    timer--;
-                    sendOtpBtn.textContent = `Resend (${timer}s)`;
-                    if (timer <= 0) {
-                        clearInterval(interval);
-                        sendOtpBtn.disabled = false;
-                        sendOtpBtn.textContent = 'Send OTP';
-                    }
-                }, 1000);
-            } else {
-                const data = await res.json();
-                await showSystemAlert(data.message, 'Error', '❌');
-                sendOtpBtn.disabled = false;
-                sendOtpBtn.textContent = 'Send OTP';
-            }
-        } catch (err) {
-            await showSystemAlert('Error connecting to server.', 'Connection Error', '🌐');
-            sendOtpBtn.disabled = false;
-            sendOtpBtn.textContent = 'Send OTP';
         }
     };
 }
@@ -500,8 +439,8 @@ window.validateUserAction = async (action) => {
 
         let body = { amount, password };
         if (action === 'transfer') {
-            body.recipient = document.getElementById('trans-recipient').value;
-            if (!body.recipient) {
+            body.toEmail = document.getElementById('trans-recipient').value;
+            if (!body.toEmail) {
                 showNotification('Please enter recipient details', 'error');
                 return;
             }
