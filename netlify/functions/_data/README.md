@@ -1,0 +1,1 @@
+This folder stores example runtime data for the Netlify Functions used during development (OTPs, messages). Note: serverless environments may not preserve files between invocations; this is for local/dev testing only.

@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Zip files and temp files
+*.zip
+deploy_temp/
+.netlify.zip
+
+# Local Netlify folder
+.netlify
+
+# Data files (we don't want to commit these)
+backend/data.json

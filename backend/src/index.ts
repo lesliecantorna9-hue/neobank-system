@@ -127,8 +127,27 @@ interface PendingOTP {
 }
 let pendingOTPs: PendingOTP[] = [];
 
-const loadData = () => {
+const loadData = async () => {
   try {
+    // If Supabase is configured, try to load from it first
+    if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
+      try {
+        // dynamic import to avoid crashing when module missing locally
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { loadDataFromSupabase } = require('./supabaseClient');
+        const remote = await loadDataFromSupabase();
+        if (remote) {
+          users = remote.users || [];
+          cardRequests = remote.cardRequests || [];
+          contactMessages = remote.contactMessages || [];
+          console.log('Data loaded from Supabase');
+          return;
+        }
+      } catch (err) {
+        console.warn('Supabase load failed, falling back to local file:', err.message || err);
+      }
+    }
+
     if (fs.existsSync(dataFile)) {
       const fileData = fs.readFileSync(dataFile, 'utf8');
       const parsedData = JSON.parse(fileData);
@@ -138,7 +157,7 @@ const loadData = () => {
       console.log('Data loaded from data.json');
     } else {
       seedUsers();
-      saveData();
+      await saveData();
     }
   } catch (error) {
     console.error('Error loading data:', error);
@@ -146,14 +165,32 @@ const loadData = () => {
   }
 };
 
-const saveData = () => {
+const saveData = async () => {
   try {
     const dataToSave = { users, cardRequests, contactMessages };
+    // If Supabase configured, try to save there
+    if (process.env.SUPABASE_URL && process.env.SUPABASE_KEY) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { saveDataToSupabase } = require('./supabaseClient');
+        await saveDataToSupabase(dataToSave);
+        console.log('Data saved to Supabase');
+        return;
+      } catch (err) {
+        console.warn('Supabase save failed, falling back to local file:', err.message || err);
+      }
+    }
+
     fs.writeFileSync(dataFile, JSON.stringify(dataToSave, null, 2), 'utf8');
   } catch (error) {
     console.error('Error saving data:', error);
   }
 };
+
+// Health route for Render / load checks
+app.get('/api/health', (req: Request, res: Response) => {
+  res.json({ status: 'ok', uptime: process.uptime(), env: process.env.NODE_ENV || 'development' });
+});
 
 // Seed dummy users for testing
 const seedUsers = () => {
