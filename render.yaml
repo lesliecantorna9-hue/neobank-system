@@ -6,7 +6,7 @@ services:
     env: node
     region: oregon
     plan: starter
-    repo: lesliecantorna9/neobank-system
+    repo: lesliecantorna9-hue/neobank-system
     branch: main
     rootDir: backend
     buildCommand: "npm ci && npm run build"
