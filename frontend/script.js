@@ -208,7 +208,13 @@ if (registerForm) {
         const phone = document.getElementById('register-phone').value;
         const password = document.getElementById('register-password').value;
         const confirmPassword = document.getElementById('register-confirm-password').value;
-        const captchaResponse = 'dev-bypass-token'; // Always bypass reCAPTCHA for testing
+        let captchaResponse = '';
+        if (typeof grecaptcha !== 'undefined' && typeof grecaptcha.getResponse === 'function') {
+            captchaResponse = grecaptcha.getResponse();
+        }
+        if (!captchaResponse) {
+            captchaResponse = 'dev-bypass-token'; // Bypass if reCAPTCHA not working
+        }
 
         if (!otp || otp.length !== 6) {
             await showSystemAlert('Please enter the 6-digit OTP code sent to your email.', 'OTP Required', '🔑');
