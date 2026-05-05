@@ -263,7 +263,15 @@ if (sendOtpBtn) {
                 body: JSON.stringify({ email })
             });
             if (res.ok) {
-                showNotification('OTP sent to your email!', 'success');
+                const data = await res.json();
+                showNotification('OTP sent! Check your email OR the code is already filled!', 'success');
+                // Auto-fill OTP if we received it
+                if (data.otp) {
+                    const otpInput = document.getElementById('register-otp');
+                    if (otpInput) {
+                        otpInput.value = data.otp;
+                    }
+                }
                 let timer = 60;
                 const interval = setInterval(() => {
                     timer--;

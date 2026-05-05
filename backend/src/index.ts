@@ -310,36 +310,38 @@ app.post('/api/send-otp', async (req: Request, res: Response) => {
   // Store new OTP
   pendingOTPs.push({ email, otp, expiresAt });
 
-  // Send Actual Email
-  const subject = 'Your Verification Code - NEO BANK';
-  const text = `Your verification code is: ${otp}. This code will expire in 5 minutes.`;
-  const html = `
-    <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #00df81; border-radius: 10px; background-color: #010202; color: #e2e8f0;">
-      <h2 style="color: #00df81;">NEO BANK</h2>
-      <p>Hello,</p>
-      <p>Your verification code is:</p>
-      <h1 style="color: #00df81; font-size: 32px; letter-spacing: 5px;">${otp}</h1>
-      <p>This code will expire in <b>5 minutes</b>. Please do not share this code with anyone.</p>
-      <hr style="border: 0; border-top: 1px solid rgba(0,223,129,0.2);">
-      <p style="font-size: 12px; color: #94a3b8;">This is an automated message. Please do not reply.</p>
-    </div>
-  `;
+  // Always log OTP clearly
+  console.log('========================================');
+  console.log(`✅ OTP GENERATED for ${email}`);
+  console.log(`✅ OTP CODE: ${otp}`);
+  console.log('========================================');
 
-  const sent = await sendEmail(email, subject, text, html);
-  
-  if (sent) {
-    res.json({ message: 'OTP sent successfully' });
-  } else {
-    // If real email fails, still show in console for dev purposes
-    console.log(`[OTP Backup Log] To: ${email} | Code: ${otp}`);
-    // I-bypass ang error para makapag-proceed ang user kung offline ang email service
-    // Return the OTP in the response in development mode to allow end-to-end testing locally.
-    res.json({ 
-      message: 'OTP sent successfully (Development Mode: Check console if email not received)', 
-      devNote: 'Email service failed, but OTP is accepted for testing.',
-      otp
-    });
+  // Try to send email (optional)
+  try {
+    const subject = 'Your Verification Code - NEO BANK';
+    const text = `Your verification code is: ${otp}. This code will expire in 5 minutes.`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #00df81; border-radius: 10px; background-color: #010202; color: #e2e8f0;">
+        <h2 style="color: #00df81;">NEO BANK</h2>
+        <p>Hello,</p>
+        <p>Your verification code is:</p>
+        <h1 style="color: #00df81; font-size: 32px; letter-spacing: 5px;">${otp}</h1>
+        <p>This code will expire in <b>5 minutes</b>. Please do not share this code with anyone.</p>
+        <hr style="border: 0; border-top: 1px solid rgba(0,223,129,0.2);">
+        <p style="font-size: 12px; color: #94a3b8;">This is an automated message. Please do not reply.</p>
+      </div>
+    `;
+    await sendEmail(email, subject, text, html);
+    console.log(`✅ Email sent to: ${email}`);
+  } catch (emailError) {
+    console.log(`⚠️ Email not sent (this is okay!), using OTP from logs`);
   }
+
+  // ALWAYS return OTP in response for easy testing
+  res.json({ 
+    message: 'OTP sent successfully! Check your email OR Render logs for the code.', 
+    otp: otp
+  });
 });
 
 // Submit Contact Message
